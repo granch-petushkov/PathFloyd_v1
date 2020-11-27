@@ -19,8 +19,8 @@ namespace PathFloyd
             Console.WriteLine();
         }
 
-        //Вывод на консоль данных из матрици смежности
-        private static void ShowData(double[,] data, string? notanotation = null)
+        //Вывод на консоль данных из матрицы смежности
+        private static void ShowData(double[,] data, string notanotation = null)
         {
             Console.WriteLine(notanotation);
             for (int i = 0; i < data.GetLength(0); i++)
@@ -38,7 +38,7 @@ namespace PathFloyd
                 Console.WriteLine();
             }
         }
-        //Вывод на консоль данных из матрици узлов кратчайших растояний
+        //Вывод на консоль данных из матрицы узлов кратчайших расстояний
         private static void ShowData(int[,] data, string? notanotation = null)
         {
             Console.WriteLine(notanotation);
@@ -58,7 +58,7 @@ namespace PathFloyd
             }
         }
         //Получение данных об размерности матрицы смежности
-        private static int GetAdjacencyMatrixSize(IList<object[]> data)
+        private static int GetAdjacencyMatrixSize(IList<object[]> data) //PAA: Размерность матрицы должна быть равна количеству узлам, попробуйте проще найти количество узлов
         {
             int matrixSize = 0;
             for (int i = 0; i < data[i].Length; i += 4)
@@ -93,7 +93,8 @@ namespace PathFloyd
             }
         }
 
-        //Непосредственно алгоритм Флойда-Уолшера - округление тоже можно вынисти в параметры метода
+        //Непосредственно алгоритм Флойда-Уолшера - округление тоже можно вынести в параметры метода
+        //PAA: почему тут принимаемый массив интов с "?"? (и так же это прослеживается в других методах )
         private static void StartFloydAlg(double[,] adjacencyMatrix, int[,]? mapMatrix = null) 
         {
             for (int k = 0; k < 10; k++)
@@ -132,7 +133,9 @@ namespace PathFloyd
 
             //var connectionStr = String.Join(";", new[] { server, port, user, password, database});
             var connectionStr = String.Join(";", new[] { host, user, password, database });
-
+            
+            //PAA: 1вар. запроса. Познакомьтесь с join и попробуйте переписать запрос c этим механизма.
+            //2вар запроса. Разбейте получение ребер и вершин на 2 простых запроса и работайте с ними. п.1 реализуйте для практики join
             var sqlQuery = @"select graph_edge.vertexstartid, graph_vertex.x, graph_vertex.y, graph_vertex.z, graph_edge.vertexendid,
                        (select graph_vertex.x
                          from graph_vertex
@@ -146,6 +149,8 @@ namespace PathFloyd
                                 from graph_edge, graph_vertex
                                 where graph_vertex.vertexid = graph_edge.vertexstartid;";
 
+
+            
             using (var connection = new NpgsqlConnection(connectionStr))
             {
                 connection.Open();
@@ -154,9 +159,11 @@ namespace PathFloyd
                 var reader = sqlCommand.ExecuteReader();
                 graphData = new List<object[]>();
 
+                //PAA: Переделайте механизм получения данных без приведения к "object" это для 1вар запроса, для 2варианта наверное все получится сразу проще
                 //Заполняем список данными о узлах и их координатах у графа
                 while (reader.Read())
                 {
+                    //reader.GetPhi
                     object[] column = new object[reader.FieldCount];
                     reader.GetValues(column);
                     graphData.Add(column);
@@ -169,11 +176,13 @@ namespace PathFloyd
             int size = GetAdjacencyMatrixSize(graphData);
 
             //Инициализация матрицы смежности и матрицы адресов
-            adjacencyMatrix = new double[size, size];
+            
+            adjacencyMatrix = new double[size, size]; 
             mapMatrix = new int[size, size];           
             InitializAdjacencyMatrix(adjacencyMatrix);
 
             //Проведем начальное заполнение матрицы смежности весами ребер
+            
             for (int n = 0; n < graphData.Count; n++)
             {
                 int i = (int)graphData[n].GetValue(0) - 1;
@@ -192,7 +201,7 @@ namespace PathFloyd
 
             ShowData(adjacencyMatrix, "Матрица смежности с кратчайшими путями");
             Console.WriteLine();
-            ShowData(mapMatrix, "Матрица узлов кратчайших растояний");
+            ShowData(mapMatrix, "Матрица узлов кратчайших расстояний");
 
             Console.ReadKey();
         }
